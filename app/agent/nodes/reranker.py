@@ -13,11 +13,16 @@ logger = logging.getLogger(__name__)
 
 
 def _build_candidates_table(candidates: list[dict]) -> str:
-    """Format candidates as a compact table for the LLM prompt."""
-    lines = ["id | name | test_type | duration_minutes | summary"]
-    lines.append("---|------|-----------|-----------------|--------")
-    for c in candidates:
-        desc = (c.get("description", "") or "")[:120]
+    """Format candidates as a compact table for the LLM prompt.
+    Capped at 25 candidates × 60-char descriptions to fit Gemini Flash context
+    efficiently and reduce per-call token consumption ~3x. Foundational
+    injection earlier in the pipeline guarantees key items are near the top."""
+    MAX_CANDIDATES = 25
+    DESC_CHARS = 60
+    lines = ["id | name | test_type | dur | summary"]
+    lines.append("---|------|-----------|-----|--------")
+    for c in candidates[:MAX_CANDIDATES]:
+        desc = (c.get("description", "") or "")[:DESC_CHARS]
         lines.append(
             f"{c['id']} | {c['name']} | {c.get('test_type', '')} | "
             f"{c.get('duration_minutes', 'N/A')} | {desc}"
@@ -39,7 +44,24 @@ async def run(state: AgentState) -> dict:
             slots_json=slots.model_dump_json(indent=2),
             candidates_table=_build_candidates_table(candidates),
         )
-        ranked = await llm.call_json(prompt, max_tokens=2048)
+        # Reranker goes to Gemini first (separate quota pool from Groq, avoids
+        # rate-limit cascades that pushed chat latency past 30s). Falls back to
+        # Groq via call_json if Gemini fails.
+        try:
+            raw = await llm._gemini_call_with_rotation(
+                prompt=prompt,
+                system="",
+                max_tokens=2048,
+                temperature=0.1,
+                timeout=20.0,
+            )
+            ranked = llm.extract_json_from_text(raw)
+            if ranked is None:
+                logger.warning("Reranker: Gemini returned unparseable JSON, falling back to Groq")
+                ranked = await llm.call_json(prompt, max_tokens=2048)
+        except Exception as gem_err:
+            logger.warning("Reranker: Gemini call failed (%s), falling back to Groq", gem_err)
+            ranked = await llm.call_json(prompt, max_tokens=2048)
 
         if isinstance(ranked, dict):
             # LLM sometimes wraps array in a dict like {"results": [...]}
