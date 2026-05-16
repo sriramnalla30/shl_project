@@ -121,3 +121,10 @@
 **Change**: Replaced LLM-driven simulated-user replay with "ideal-trace replay" — sends literal user turns from markdown files through /chat. Computes Recall@10 against expected URLs.
 **Reason**: Simulated-user approach was non-deterministic and required GROQ_API_KEY. Ideal-trace replay is deterministic and directly tests the agent against the exact conversations the evaluator will use.
 **Impact**: Reliable, reproducible Recall@10 measurement with no LLM dependency in the eval loop.
+
+## D-020: Widen Retrieval Top-K and Raise Reranker Fallback Floor
+**Date**: 2026-05-16
+**File(s)**: `app/agent/nodes/retriever.py`, `app/agent/nodes/reranker.py`
+**Change**: Raised BM25 and FAISS top-k from 30 to 50; raised the post-RRF cap from [:30] to [:50]. Raised the reranker LLM-failure fallback from candidates[:5] to candidates[:8].
+**Reason**: First eval run reported mean Recall@10 = 0.277. Two structural caps were responsible for most of the gap: (a) expected URLs at rank 31–50 in either modality were never seen by the reranker, and (b) when the reranker LLM failed (notably during Groq daily-token exhaustion), the 5-item fallback shortlist was mathematically incapable of exceeding Recall@10 ≈ 0.71 even with perfect ordering — and was usually closer to 0.20–0.30 because top-5 doesn't always contain the relevant items. Widening both knobs makes the retrieval pipeline robust to LLM failures and gives the reranker a richer candidate pool.
+**Impact**: Expected lift of 0.15–0.20 on mean Recall@10 standalone, before any of the upcoming Mini-Prompt A/B/C fixes land.
