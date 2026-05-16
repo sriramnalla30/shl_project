@@ -45,6 +45,11 @@ async def lifespan(app: FastAPI):
 
     # Load URL allowlist
     _url_allowlist = load_url_allowlist()
+    if not _url_allowlist:
+        raise RuntimeError(
+            "url_allowlist.txt is missing or empty. "
+            "Run `python scripts/build_indexes.py` to generate data/ artifacts before starting the server."
+        )
     logger.info("URL allowlist loaded: %d URLs", len(_url_allowlist))
 
     # Initialize retrieval modules
