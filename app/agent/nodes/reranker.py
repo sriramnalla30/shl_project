@@ -56,12 +56,21 @@ async def run(state: AgentState) -> dict:
             return {"shortlist": candidates[:8]}
 
         # Hydrate from candidates
+        # Hydrate from candidates — accept multiple id field names + coerce strings
         by_id = {c["id"]: c for c in candidates}
         shortlist = []
         for r in ranked:
             if not isinstance(r, dict):
                 continue
+            # LLM may use "catalog_id", "id", or "position"
             cid = r.get("catalog_id")
+            if cid is None:
+                cid = r.get("id")
+            if cid is None and isinstance(r.get("position"), int):
+                cid = r["position"]
+            # Coerce numeric strings to int
+            if isinstance(cid, str) and cid.isdigit():
+                cid = int(cid)
             if cid is not None and cid in by_id:
                 item = {**by_id[cid], "reason": r.get("reason", "")}
                 shortlist.append(item)

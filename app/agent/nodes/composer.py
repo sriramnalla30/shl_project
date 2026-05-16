@@ -35,6 +35,19 @@ async def run(state: AgentState) -> dict:
     if not shortlist:
         return await fallback(state)
 
+    # Backfill if reranker gave us a very small shortlist (fallback path)
+    # so the user gets a full 5-8 item battery instead of just 1-2.
+    if len(shortlist) < 5:
+        candidates = state.get("candidates", [])
+        seen_ids = {s.get("id") for s in shortlist}
+        for c in candidates:
+            if c.get("id") not in seen_ids:
+                shortlist.append(c)
+                seen_ids.add(c.get("id"))
+                if len(shortlist) >= 8:
+                    break
+        logger.info("Composer: backfilled shortlist to %d items", len(shortlist))
+
     feedback_block = ""
     if feedback:
         feedback_block = "PREVIOUS ATTEMPT FAILED. Fix these issues:\n" + "\n".join(f"- {e}" for e in feedback)

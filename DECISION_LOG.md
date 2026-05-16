@@ -156,3 +156,16 @@
 **Change**: (1) Added _VOCAB_EXPANSIONS dictionary mapping user vocabulary (re-skill, leadership, sales, CXO, etc.) to catalog vocabulary (Global Skills Assessment, OPQ Leadership Report, OPQ MQ Sales). (2) Reranker rubric now mandates including OPQ32r foundational instrument when any OPQ-derived report or P-type test is in scope; mandates GSA + GSDR for skills/audit queries; prefers broad reports over narrow variants.
 **Reason**: Run after router fix showed 8 traces stuck at 0.40 because the agent returned 8 sales/leadership-themed items but consistently missed OPQ32r itself plus GSA. Diagnostic on C5 confirmed 3 expected items were missing from agent's top-8.
 **Impact**: Mean Recall@10 0.434 → 0.450. C1 jumped 0.00 → 0.67 (huge); C6 from 0.00 → 0.50; C7 from 0.00 → 0.20. C10 regressed 1.00 → 0.50 due to OPQ32r mandate displacing a correct non-OPQ item. Trade-off acknowledged.
+## D-026: Persistent file logging for offline debugging
+**Date**: 2026-05-16
+**File(s)**: app/main.py, eval/replay.py, logs/.gitignore
+**Change**: Server logs to logs/server.log (rotating 5MB x 3 backups). Eval runs log to logs/eval.log (overwritten each run).
+**Reason**: Windows terminal scrollback truncated logs during long eval runs, blocking diagnostics.
+**Impact**: Full server + eval traces are now persisted to disk and can be attached for debugging.
+
+## D-027: Foundational catalog item injection in retriever
+**Date**: 2026-05-16
+**File(s)**: app/agent/nodes/retriever.py
+**Change**: Added _FOUNDATIONAL_INJECTION_RULES table and _inject_foundational_items() function. After BM25+FAISS+RRF, if slots or query match trigger patterns (leadership, sales, personality, skills audit, etc.), the foundational catalog items (OPQ32r, OPQ Leadership Report, OPQ MQ Sales, GSA, GSDR, OPQ Manager Plus) are injected into the candidate pool at position 5 if not already present.
+**Reason**: Diagnostic on C1 (CXO leadership query) and C5 (sales re-skill query) proved foundational items were ranking 60+ in BM25/FAISS because their catalog descriptions don't contain user-vocabulary keywords like 'CXO' or 're-skill'. The reranker can only choose from candidates retrieval surfaces, so the rubric mandate was ineffective.
+**Impact**: Expected mean Recall@10 lift of 0.10-0.25, with C1 likely to improve from 0.67 to 1.00 and the 0.40 cluster (C2/C4/C5/C8) likely to improve to 0.60-0.80.
