@@ -5,13 +5,40 @@ from __future__ import annotations
 
 import json
 import logging
-import re
+import re as _re
 
 from app.agent.state import AgentState
 from app.agent import llm
 
 logger = logging.getLogger(__name__)
 _catalog: list[dict] = []
+
+_URL_PATTERN = _re.compile(r"https?://www\.shl\.com/[^\s)>\]\"|]+")
+
+
+def _extract_prior_recs_from_history(messages: list) -> list[dict]:
+    """Walk back through assistant messages, find the most recent set of catalog URLs,
+    and resolve them to {name, url, test_type} from the catalog."""
+    for m in reversed(messages):
+        if m.role != "assistant":
+            continue
+        urls = _URL_PATTERN.findall(m.content)
+        if not urls:
+            continue
+        out = []
+        for u in urls:
+            u_norm = u.rstrip("/").rstrip(">").rstrip(",")
+            for rec in _catalog:
+                if rec["url"].rstrip("/") == u_norm:
+                    out.append({
+                        "name": rec["name"],
+                        "url": rec["url"],
+                        "test_type": rec.get("test_type", ""),
+                    })
+                    break
+        if out:
+            return out
+    return []
 
 
 def set_catalog(catalog: list[dict]) -> None:
@@ -80,7 +107,22 @@ async def run(state: AgentState) -> dict:
             record_b_json=json.dumps(rec_b, indent=2, default=str),
         )
         comparison = await llm.call_main(prompt, max_tokens=512, temperature=0.2)
-        recs = [{"name": r["name"], "url": r["url"], "test_type": r.get("test_type", "")} for r in [rec_a, rec_b]]
+
+        # Preserve any prior shortlist from earlier recommend turns
+        prior_recs = _extract_prior_recs_from_history(state.get("messages", []))
+        if prior_recs:
+            compared = [{"name": r["name"], "url": r["url"], "test_type": r.get("test_type", "")} for r in [rec_a, rec_b]]
+            seen_urls = set()
+            recs = []
+            for item in prior_recs + compared:
+                u = item["url"].rstrip("/")
+                if u not in seen_urls:
+                    seen_urls.add(u)
+                    recs.append(item)
+            recs = recs[:10]
+        else:
+            recs = [{"name": r["name"], "url": r["url"], "test_type": r.get("test_type", "")} for r in [rec_a, rec_b]]
+
         draft = {"reply": comparison.strip(), "recommendations": recs, "end_of_conversation": False}
         return {"compare_pair": (rec_a, rec_b), "draft": draft, "retry_count": 0}
     except Exception as e:
