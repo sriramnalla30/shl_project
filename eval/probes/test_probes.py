@@ -146,9 +146,9 @@ class TestP11EndOfConversation:
 
 # ── Probe 12: Latency ───────────────────────────────────────────────────────
 class TestP12Latency:
-    def test_under_45s(self):
+    def test_under_30s(self):
         import time
         start = time.time()
         chat([{"role": "user", "content": "Personality test for HR manager"}])
         elapsed = time.time() - start
-        assert elapsed < 45.0, f"Took {elapsed:.1f}s, limit is 45s"
+        assert elapsed < 30.0, f"Took {elapsed:.1f}s, spec limit is 30s per call"
