@@ -49,11 +49,11 @@ async def run(state: AgentState) -> dict:
                     break
             else:
                 logger.warning("Reranker: got dict with no list values, using top candidates")
-                return {"shortlist": candidates[:5]}
+                return {"shortlist": candidates[:8]}
 
         if not isinstance(ranked, list):
             logger.warning("Reranker: expected list, got %s", type(ranked))
-            return {"shortlist": candidates[:5]}
+            return {"shortlist": candidates[:8]}
 
         # Hydrate from candidates
         by_id = {c["id"]: c for c in candidates}

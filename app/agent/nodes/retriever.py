@@ -68,7 +68,7 @@ async def run(state: AgentState) -> dict:
     # Hybrid retrieval
     bm = bm25_topk(query, k=50)
     de = dense_topk(query, k=50)
-    fused = rrf([bm, de], k=100)[:50]
+    fused = rrf([bm, de], k=60)[:50]
 
     # Hydrate with catalog records
     candidates = []
