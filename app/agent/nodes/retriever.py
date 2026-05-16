@@ -58,6 +58,91 @@ def _expand_vocabulary(text: str) -> str:
             extra_terms.append(expansion)
     return " ".join(extra_terms)
 
+# ── Foundational item injection rules ────────────────────────────────────────
+# These items are core SHL instruments that should appear in the candidate
+# pool whenever specific trigger conditions are met, even if BM25/FAISS rank
+# them below the top-50 cutoff. The reranker then decides whether to include
+# them in the final shortlist via the prompt rubric.
+
+# Each rule: (trigger_pattern, list_of_catalog_name_substrings_to_inject)
+_FOUNDATIONAL_INJECTION_RULES: list[tuple[str, list[str]]] = [
+    # Personality / leadership / management / sales / behavioral → OPQ family
+    (r"\b(personality|behavior|behaviour|leadership|leader|executive|cxo|"
+     r"director|manager|management|senior|sales|seller|behavioral)\b",
+     ["occupational personality questionnaire opq32r"]),
+
+    # Leadership / executive roles → OPQ Leadership + Universal Competency reports
+    (r"\b(leadership|leader|executive|cxo|director|c-suite|chief)\b",
+     ["opq leadership report",
+      "opq universal competency report"]),
+
+    # Sales roles → OPQ MQ Sales Report
+    (r"\b(sales|seller|account executive|business development)\b",
+     ["opq mq sales report"]),
+
+    # Skills audit / re-skill / talent audit → Global Skills products
+    (r"\b(skill|re-?skill|up-?skill|audit|talent assessment|capability)\b",
+     ["global skills assessment",
+      "global skills development report"]),
+
+    # Manager-specific → OPQ Manager Plus
+    (r"\b(manager|management|supervisor|team lead)\b",
+     ["opq manager plus report"]),
+]
+
+
+def _inject_foundational_items(
+    candidates: list[dict],
+    query: str,
+    slots,
+) -> list[dict]:
+    """Inject foundational catalog items into the candidate pool when triggered
+    by slots or query content. Items already present are not duplicated.
+    Injected items are placed near the top so the reranker considers them."""
+    import re as _re
+    haystack_parts = [query or ""]
+    if slots.role:
+        haystack_parts.append(slots.role)
+    if slots.must_haves:
+        haystack_parts.extend(slots.must_haves)
+    haystack = " ".join(haystack_parts).lower()
+
+    # Collect names to inject (deduped)
+    names_to_inject: list[str] = []
+    seen_triggers: set[str] = set()
+    for pattern, names in _FOUNDATIONAL_INJECTION_RULES:
+        if _re.search(pattern, haystack, _re.IGNORECASE):
+            for n in names:
+                if n not in seen_triggers:
+                    seen_triggers.add(n)
+                    names_to_inject.append(n)
+
+    if not names_to_inject:
+        return candidates
+
+    # Build set of already-present (lowercased) names
+    present_names: set[str] = {(c.get("name") or "").lower() for c in candidates}
+
+    # Find matching catalog records and inject if not already in candidates
+    injected: list[dict] = []
+    for needle in names_to_inject:
+        for rec in _catalog:
+            rec_name = (rec.get("name") or "").lower()
+            if needle in rec_name and rec_name not in present_names:
+                injected.append({**rec, "retrieval_score": 0.0, "injected": True})
+                present_names.add(rec_name)
+                logger.info("Foundational injection: %s (trigger=%r)",
+                            rec.get("name"), needle)
+                break  # one match per needle
+
+    if not injected:
+        return candidates
+
+    # Place injected items right after position 5 — high enough that the
+    # reranker definitely sees them, low enough that BM25 leaders stay visible.
+    return candidates[:5] + injected + candidates[5:]
+
+
 def render_query(slots: Slots, messages: list) -> str:
     """Build a synthesized query from structured slots + user messages."""
     user_msgs = []
@@ -95,7 +180,7 @@ def render_query(slots: Slots, messages: list) -> str:
     if expansion:
         return f"{base_query} | catalog terms: {expansion}"
     return base_query
-    
+
 async def run(state: AgentState) -> dict:
     slots: Slots = state.get("slots", Slots())
     messages = state.get("messages", [])
@@ -121,5 +206,9 @@ async def run(state: AgentState) -> dict:
         duration_max_min=slots.duration_max_min,
     )
 
-    logger.info("Retriever: %d fused → %d filtered candidates", len(candidates), len(filtered))
+    # Inject foundational items that retrieval may have ranked outside top-50
+    filtered = _inject_foundational_items(filtered, query, slots)
+
+    logger.info("Retriever: %d fused → %d filtered+injected candidates",
+                len(candidates), len(filtered))
     return {"candidates": filtered}
