@@ -68,20 +68,30 @@ async def run(state: AgentState) -> dict:
 
 
 def _ensure_exact_recs(recs: list, shortlist: list[dict]) -> list[dict]:
-    """Ensure recommendations use exact names/URLs from catalog."""
+    """Ensure recommendations use exact names/URLs from catalog.
+    Drops any item the LLM hallucinated that isn't in the shortlist."""
     name_map = {item["name"].lower(): item for item in shortlist}
     result = []
     for r in recs:
-        if isinstance(r, dict):
-            name = r.get("name", "")
-            if name.lower() in name_map:
-                item = name_map[name.lower()]
-                result.append({"name": item["name"], "url": item["url"],
-                               "test_type": item.get("test_type", "")})
-            else:
-                result.append(r)
-    return result if result else [{"name": s["name"], "url": s["url"],
-                                    "test_type": s.get("test_type", "")} for s in shortlist[:10]]
+        if not isinstance(r, dict):
+            continue
+        name = r.get("name", "")
+        if name.lower() in name_map:
+            item = name_map[name.lower()]
+            result.append({
+                "name": item["name"],
+                "url": item["url"],
+                "test_type": item.get("test_type", ""),
+            })
+        else:
+            logger.warning("Composer dropped hallucinated rec: %s", name)
+    if result:
+        return result
+    # Last-resort fallback: project the shortlist directly
+    return [
+        {"name": s["name"], "url": s["url"], "test_type": s.get("test_type", "")}
+        for s in shortlist[:10]
+    ]
 
 
 def _build_direct_draft(shortlist: list[dict], slots: Slots) -> dict:
