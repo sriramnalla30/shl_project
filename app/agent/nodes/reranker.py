@@ -73,8 +73,26 @@ async def run(state: AgentState) -> dict:
             logger.warning("Reranker: no valid items in ranked output, using top candidates")
             shortlist = candidates[:5]
 
-        logger.info("Reranker: %d → %d shortlisted", len(candidates), len(shortlist))
-        return {"shortlist": shortlist}
+        # Gap detection: if the user's role/skills include a specific technology,
+        # check whether ANY shortlist item's name contains that technology token.
+        # If not, attach a gap marker that the composer will surface.
+        gap_skill = None
+        if slots.role or slots.must_haves:
+            import re
+            raw_text = " ".join([slots.role or ""] + (slots.must_haves or []))
+            tokens = re.findall(r"\b[A-Z][a-zA-Z0-9+#.]{2,}\b", raw_text)
+            # Known techs that exist in catalog — don't flag these
+            known_in_catalog = {"java", "python", "sql", "aws", "docker", "spring",
+                                "angular", "excel", "word", "linux", "networking",
+                                "hipaa", "opq", "shl", "verify"}
+            distinctive = [t for t in tokens if t.lower() not in known_in_catalog]
+            for t in distinctive:
+                if not any(t.lower() in s["name"].lower() for s in shortlist):
+                    gap_skill = t
+                    break
+
+        logger.info("Reranker: %d → %d shortlisted, gap=%s", len(candidates), len(shortlist), gap_skill)
+        return {"shortlist": shortlist, "catalog_gap": gap_skill}
     except Exception as e:
         logger.warning("Reranker failed (%s), using top-5 candidates as fallback", e)
-        return {"shortlist": candidates[:5]}
+        return {"shortlist": candidates[:5], "catalog_gap": None}

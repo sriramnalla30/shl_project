@@ -39,12 +39,20 @@ async def run(state: AgentState) -> dict:
     if feedback:
         feedback_block = "PREVIOUS ATTEMPT FAILED. Fix these issues:\n" + "\n".join(f"- {e}" for e in feedback)
 
+    # Inject catalog gap notice if the reranker detected one
+    gap = state.get("catalog_gap")
+    gap_block = ""
+    if gap:
+        gap_block = (f"\n\nIMPORTANT: The catalog has no test specifically for {gap}. "
+                     f"Acknowledge this gap explicitly in your reply and present the shortlist "
+                     f"as the closest alternatives.")
+
     try:
         prompt_template = llm.load_prompt("composer")
         prompt = prompt_template.format(
             slots_json=slots.model_dump_json(indent=2),
             shortlist_table=_build_shortlist_table(shortlist),
-            feedback_block=feedback_block,
+            feedback_block=feedback_block + gap_block,
         )
         raw = await llm.call_main(prompt, max_tokens=2048, temperature=0.1)
         draft = llm.extract_json_from_text(raw)
