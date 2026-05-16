@@ -18,8 +18,16 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# ── Gemini SDK (optional fallback) ───────────────────────────────────────────
+try:
+    from google import genai
+    _gemini_available = True
+except ImportError:
+    _gemini_available = False
+
 # ── Globals (initialized lazily) ─────────────────────────────────────────────
 _groq_client: AsyncGroq | None = None
+_gemini_client: Any = None
 _skill_text: str = ""
 
 
@@ -29,6 +37,16 @@ def _get_groq() -> AsyncGroq:
         settings = get_settings()
         _groq_client = AsyncGroq(api_key=settings.groq_api_key)
     return _groq_client
+
+
+def _get_gemini_client():
+    """Get or create a Gemini client."""
+    global _gemini_client
+    if _gemini_client is None and _gemini_available:
+        settings = get_settings()
+        if settings.gemini_api_key:
+            _gemini_client = genai.Client(api_key=settings.gemini_api_key)
+    return _gemini_client
 
 
 def load_skill_text() -> str:
@@ -83,6 +101,44 @@ def _extract_json(text: str) -> Any:
         return None
 
 
+async def _gemini_call(
+    prompt: str,
+    system: str = "",
+    max_tokens: int = 1024,
+    temperature: float = 0.1,
+    timeout: float = 20.0,
+) -> str:
+    """Final fallback when both Groq main and cheap models fail."""
+    client = _get_gemini_client()
+    if client is None:
+        raise RuntimeError("Gemini not available (no API key or SDK not installed)")
+    settings = get_settings()
+    model_name = settings.gemini_model
+
+    full_prompt = f"{system}\n\n{prompt}" if system else prompt
+
+    try:
+        resp = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.models.generate_content,
+                model=model_name,
+                contents=full_prompt,
+                config={
+                    "max_output_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+            ),
+            timeout=timeout,
+        )
+        return resp.text or ""
+    except asyncio.TimeoutError:
+        logger.warning("Gemini %s timed out after %.1fs", model_name, timeout)
+        raise
+    except Exception as e:
+        logger.warning("Gemini %s failed: %s", model_name, e)
+        raise
+
+
 async def _groq_call(
     prompt: str,
     model: str | None = None,
@@ -92,7 +148,8 @@ async def _groq_call(
     temperature: float = 0.1,
     timeout: float = 15.0,
 ) -> str:
-    """Make a Groq API call with timeout and fallback."""
+    """Make a Groq API call with timeout and fallback chain:
+    main -> cheap -> Gemini."""
     settings = get_settings()
     model = model or settings.groq_model_main
     client = _get_groq()
@@ -118,25 +175,40 @@ async def _groq_call(
         )
         return resp.choices[0].message.content or ""
     except (RateLimitError, APIStatusError) as e:
-        logger.warning("Groq %s failed (%s), trying fallback model…", model, e)
-        # Fallback to cheaper model
+        logger.warning("Groq %s failed (%s), trying fallback...", model, e)
         if model == settings.groq_model_main:
-            return await _groq_call(
-                prompt, model=settings.groq_model_cheap,
-                system=system, json_mode=json_mode,
-                max_tokens=max_tokens, temperature=temperature,
-                timeout=timeout,
-            )
+            try:
+                return await _groq_call(
+                    prompt, model=settings.groq_model_cheap,
+                    system=system, json_mode=json_mode,
+                    max_tokens=max_tokens, temperature=temperature,
+                    timeout=timeout,
+                )
+            except Exception:
+                pass
+        # Both Groq models failed -> try Gemini
+        if settings.gemini_api_key and _gemini_available:
+            logger.warning("Both Groq models exhausted, falling back to Gemini %s", settings.gemini_model)
+            return await _gemini_call(prompt, system=system, max_tokens=max_tokens,
+                                     temperature=temperature, timeout=timeout)
         raise
     except asyncio.TimeoutError:
-        logger.warning("Groq %s timed out after %.1fs, trying fallback…", model, timeout)
+        logger.warning("Groq %s timed out after %.1fs, trying fallback...", model, timeout)
         if model == settings.groq_model_main:
-            return await _groq_call(
-                prompt, model=settings.groq_model_cheap,
-                system=system, json_mode=json_mode,
-                max_tokens=max_tokens, temperature=temperature,
-                timeout=timeout,
-            )
+            try:
+                return await _groq_call(
+                    prompt, model=settings.groq_model_cheap,
+                    system=system, json_mode=json_mode,
+                    max_tokens=max_tokens, temperature=temperature,
+                    timeout=timeout,
+                )
+            except Exception:
+                pass
+        # Both Groq models failed -> try Gemini
+        if settings.gemini_api_key and _gemini_available:
+            logger.warning("Both Groq models timed out, falling back to Gemini %s", settings.gemini_model)
+            return await _gemini_call(prompt, system=system, max_tokens=max_tokens,
+                                     temperature=temperature, timeout=timeout)
         raise
 
 

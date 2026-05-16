@@ -1,11 +1,8 @@
 """
-Replay harness — feeds the user turns from each markdown conversation through
-/chat and computes Recall@10 against the URLs the ideal agent committed to.
-
-This is "ideal-trace replay": we send the literal user turns from the .md file
-in order. After each user turn we accumulate the agent's actual reply into the
-history, exactly as the official evaluator would, then send the next user turn.
-We continue through all user turns to allow multi-turn refinement to complete.
+Stateless replay harness over the markdown sample conversations.
+For each .md trace, extract the user turns via parse_md_traces, send them
+sequentially through /chat (full history per call), and compute Recall@10
+against the URLs the ideal agent committed to in the final shortlist turn.
 """
 from __future__ import annotations
 
@@ -15,7 +12,6 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any
 
 import httpx
 from dotenv import load_dotenv
@@ -30,6 +26,7 @@ logger = logging.getLogger(__name__)
 BASE_URL = os.getenv("AGENT_BASE_URL", "http://localhost:8000")
 TIMEOUT = 60.0
 MAX_TURNS = 8
+INTER_TRACE_DELAY_S = float(os.getenv("INTER_TRACE_DELAY_S", "3"))
 
 
 async def post_chat(messages: list[dict], client: httpx.AsyncClient) -> dict:
@@ -58,9 +55,9 @@ async def replay_record(record: dict, client: httpx.AsyncClient) -> dict:
         recs = resp.get("recommendations") or []
         if recs:
             final_recs = [r["url"] for r in recs]
-            # Don't break — let later user turns refine if there are more in the trace
         if turns_used >= MAX_TURNS:
             break
+
     expected = record["expected_urls"]
     recall = recall_at_k(final_recs, expected, k=10) if expected else None
     return {
@@ -90,18 +87,23 @@ async def main() -> None:
             raise RuntimeError(f"Server not reachable at {BASE_URL}: {e}")
 
         results = []
-        for rec in records:
-            logger.info("Replaying %s (%d turns)", rec["id"], rec["n_turns"])
+        for i, rec in enumerate(records):
+            if i > 0 and INTER_TRACE_DELAY_S > 0:
+                logger.info("Sleeping %.1fs between traces (rate-limit pacing)", INTER_TRACE_DELAY_S)
+                await asyncio.sleep(INTER_TRACE_DELAY_S)
+            logger.info("Replaying %s (%d user turns expected)", rec["id"], rec["n_turns"])
             res = await replay_record(rec, client)
             results.append(res)
             r10 = f"{res['recall_at_10']:.2f}" if res["recall_at_10"] is not None else "n/a"
-            logger.info("  → turns=%d, recall@10=%s, recs=%d", res["turns_used"], r10, len(res["final_recs"]))
+            logger.info("  -> turns=%d, recall@10=%s, recs=%d, expected=%d",
+                        res["turns_used"], r10, len(res["final_recs"]), res["n_expected"])
 
-    scored = [(r["final_recs"], next(rec["expected_urls"] for rec in records if rec["id"] == r["id"]))
+    expected_lookup = {r["id"]: r["expected_urls"] for r in records}
+    scored = [(r["final_recs"], expected_lookup[r["id"]])
               for r in results if r["recall_at_10"] is not None]
     mean_recall = mean_recall_at_k(scored, k=10) if scored else None
 
-    lines = ["# Eval Report — Markdown Trace Replay\n"]
+    lines = ["# Eval Report -- Markdown Trace Replay\n"]
     lines.append(f"- Server: `{BASE_URL}`")
     lines.append(f"- Traces evaluated: **{len(results)}**")
     if mean_recall is not None:
@@ -109,7 +111,7 @@ async def main() -> None:
     median_lats = [r["latency_median_s"] for r in results if r["latency_median_s"]]
     if median_lats:
         lines.append(f"- Median per-turn latency: {sum(median_lats)/len(median_lats):.2f}s")
-        lines.append(f"- Worst per-turn latency: {max(r['latency_max_s'] or 0 for r in results):.2f}s")
+        lines.append(f"- Worst per-turn latency: {max((r['latency_max_s'] or 0) for r in results):.2f}s")
     lines.append("\n## Per-trace\n")
     lines.append("| trace | turns | recall@10 | recs | n_expected | median_lat |")
     lines.append("|-------|-------|-----------|------|------------|------------|")
