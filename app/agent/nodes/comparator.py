@@ -1,6 +1,9 @@
 """
 Comparator node — catalog-grounded side-by-side comparison.
 """
+from _distutils_hack import override
+from _distutils_hack import override
+from _distutils_hack import override
 from __future__ import annotations
 
 import json
@@ -71,7 +74,7 @@ def _extract_pair(text: str) -> tuple[str, str] | None:
         r"(?:what'?s the )?difference between\s+(.+?)\s+and\s+(.+?)[\?\.]?$",
     ]
     for p in patterns:
-        m = re.search(p, text, re.I)
+        m = re.search(p, text, re.I)    
         if m:
             return m.group(1).strip().strip('"\''), m.group(2).strip().strip('"\'')
     return None
