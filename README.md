@@ -92,7 +92,10 @@ pytest eval/probes/test_probes.py -v
 
 ## Docker
 
+**Before `docker build`:** Run `python scripts/build_indexes.py` to generate the `data/` artifacts. The Docker image expects them to exist.
+
 ```bash
+python scripts/build_indexes.py    # prerequisite — generates data/
 docker build -t shl-recommender .
 docker run -p 8000:8000 --env-file .env shl-recommender
 ```

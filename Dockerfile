@@ -19,6 +19,8 @@ COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
 
 COPY app/ app/
 COPY data/ data/
+# Fail fast if indexes weren't built locally
+RUN test -f data/url_allowlist.txt || (echo "ERROR: run 'python scripts/build_indexes.py' before docker build" && exit 1)
 COPY README.md .
 
 ENV PYTHONUNBUFFERED=1
