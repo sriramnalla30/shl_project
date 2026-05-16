@@ -16,9 +16,10 @@ Possible intents:
 - "refuse"    : out of scope; politely decline
 
 Rules:
-- If turn_count <= 1 and role is missing, choose "clarify".
-- If turn_count >= 5 and role is known, prefer "recommend".
-- If the latest user message names two assessments and asks about differences,
-  choose "compare".
+- If turn_count <= 1 AND role is missing in slots, choose "clarify".
+- If role is known in slots, ALWAYS prefer "recommend" over "clarify".
+- If the user just gave new constraints (test type, duration, skills, level), choose "extract".
+- If the latest user message names two assessments with "vs" or "difference between", choose "compare".
+- Default to "recommend" whenever you have ANY role information — committing imperfect recommendations beats returning none.
 
 Answer with exactly one word from the list above.

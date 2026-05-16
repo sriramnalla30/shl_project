@@ -34,17 +34,20 @@ def _route_after_router(s: AgentState) -> str:
 def _route_after_extract(s: AgentState) -> str:
     intent = s.get("intent", "")
     slots = s.get("slots")
-
-    # New: if extractor flagged the query as over-broad, clarify first
-    if s.get("__force_clarify_broad") and s.get("turn", 0) < 3:
-        return "clarifier"
+    turn = s.get("turn", 0)
 
     if intent == "compare":
         return "comparator"
-    if intent == "clarify" or (
-        slots and not slots.is_sufficient() and s.get("turn", 0) < 5
-    ):
+
+    # Broad-query clarification, only on early turns
+    if s.get("__force_clarify_broad") and turn < 2:
         return "clarifier"
+
+    # Allow clarify only on turn 0-1 when we genuinely have nothing useful
+    if intent == "clarify" and turn < 2 and (not slots or not slots.role):
+        return "clarifier"
+
+    # Commit: any other path goes to retriever for a shortlist
     return "retriever"
 
 

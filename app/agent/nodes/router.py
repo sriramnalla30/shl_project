@@ -40,11 +40,16 @@ async def run(state: AgentState) -> dict:
         logger.info("Router: turn=%d, detailed msg → extract", turn)
         return {"intent": "extract"}
 
-    # Turn-budget bias: from turn 5, prefer recommend if role is known
-    if turn >= 5 and slots.role:
-        logger.info("Router: turn=%d, role known → recommend (budget bias)", turn)
+    # Commit bias: once role is known, prefer recommend after turn 1
+    if turn >= 2 and slots.role:
+        logger.info("Router: turn=%d, role known → recommend (commit bias)", turn)
         return {"intent": "recommend"}
 
+    # Last-resort commit: by turn 3, recommend even without role
+    # (better to retrieve on partial info than return zero recs)
+    if turn >= 3:
+        logger.info("Router: turn=%d, late-turn force recommend", turn)
+        return {"intent": "recommend"}
     # LLM classification
     try:
         prompt_template = llm.load_prompt("router")
@@ -66,6 +71,11 @@ async def run(state: AgentState) -> dict:
             else:
                 logger.warning("Router: invalid intent '%s', defaulting to extract", intent)
                 intent = "extract"
+
+        # Safety net: don't loop on clarify when we have role info
+        if intent == "clarify" and slots.role and turn >= 2:
+            logger.info("Router: overriding clarify→recommend (role known, turn=%d)", turn)
+            intent = "recommend"
 
         logger.info("Router: intent=%s (turn=%d)", intent, turn)
         return {"intent": intent}

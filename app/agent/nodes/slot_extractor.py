@@ -40,7 +40,7 @@ async def run(state: AgentState) -> dict:
         # triggers a clarification before recommend (C9 pattern)
         breadth = len(slots.must_haves) if slots.must_haves else 0
         force_broad = False
-        if breadth >= 5 and slots.role:
+        if breadth >= 7 and slots.role:
             logger.info("Slot extractor: breadth=%d → forcing clarify on broad scope", breadth)
             force_broad = True
 
