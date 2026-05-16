@@ -1,13 +1,11 @@
 """
 Comparator node — catalog-grounded side-by-side comparison.
 """
-from _distutils_hack import override
-from _distutils_hack import override
-from _distutils_hack import override
 from __future__ import annotations
 
 import json
 import logging
+import re
 import re as _re
 
 from app.agent.state import AgentState

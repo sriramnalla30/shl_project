@@ -71,7 +71,7 @@ async def run(state: AgentState) -> dict:
         # Fallback if reranker returned nothing valid
         if not shortlist:
             logger.warning("Reranker: no valid items in ranked output, using top candidates")
-            shortlist = candidates[:5]
+            shortlist = candidates[:8]
 
         # Gap detection: if the user's role/skills include a specific technology,
         # check whether ANY shortlist item's name contains that technology token.
@@ -94,5 +94,5 @@ async def run(state: AgentState) -> dict:
         logger.info("Reranker: %d → %d shortlisted, gap=%s", len(candidates), len(shortlist), gap_skill)
         return {"shortlist": shortlist, "catalog_gap": gap_skill}
     except Exception as e:
-        logger.warning("Reranker failed (%s), using top-5 candidates as fallback", e)
-        return {"shortlist": candidates[:5], "catalog_gap": None}
+        logger.warning("Reranker failed (%s), using top-8 candidates as fallback", e)
+        return {"shortlist": candidates[:8], "catalog_gap": None}
