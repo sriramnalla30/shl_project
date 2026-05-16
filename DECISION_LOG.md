@@ -177,3 +177,10 @@
 **Reason**: Reranker was the largest single token consumer (~14K tokens per call) and the primary cause of Groq rate-limit cascades that pushed individual /chat calls to 25-46 seconds — exceeding the 30s evaluator timeout. Moving reranker to Gemini's separate quota pool eliminates the cascade pressure. Shrinking the candidates table further reduces Gemini token usage and fits its context window cleanly.
 **Impact**: Per-eval Groq token consumption drops from ~770K to ~200K (now fits in 300K daily quota). Worst-case /chat latency drops from 46s to <25s. Mean Recall@10 expected to hold or improve since foundational injection still guarantees key items are in the top 25 candidates seen by the reranker.
 **Measured**: Median latency 18.65s, Worst latency 35.15s, Mean Recall@10 0.434
+
+## D-029: Deployment artifacts + approach document for Stage 2 submission
+**Date**: 2026-05-17
+**File(s)**: render.yaml, Dockerfile, .env.example, 07_APPROACH_DOCUMENT.md
+**Change**: (1) Added render.yaml with web service config (Docker env, free plan, Singapore region, health check on /health, env var declarations for 3 Groq keys + 2 Gemini keys + base keys + model overrides). (2) Verified Dockerfile uses dynamic ${PORT} binding so Render's port injection works. (3) Created .env.example so reviewers know what env vars are needed. (4) Created 2-page 07_APPROACH_DOCUMENT.md covering problem framing, architecture, design decisions, retrieval setup, prompt design, evaluation (with measured Recall@10), what didn't work, risks, AI tools used, and reproduction instructions.
+**Reason**: The SHL assignment PDF requires (a) a deployed public API endpoint reachable at /health and /chat at submission time, and (b) a 2-page approach document. Without these, submission cannot be made.
+**Impact**: Repository now contains everything needed for Stage 2 submission. User will manually deploy via Render web UI using render.yaml, then fill in the deployed URL in 07_APPROACH_DOCUMENT.md sections 0 (header) and 10 (reproduction footer).

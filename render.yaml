@@ -1,11 +1,31 @@
 services:
   - type: web
     name: shl-recommender
-    runtime: docker
+    env: docker
     plan: free
+    region: singapore
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_API_KEY_1
+        sync: false
+      - key: GROQ_API_KEY_2
+        sync: false
+      - key: GROQ_API_KEY_3
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY_1
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GROQ_MODEL_MAIN
+        value: llama-3.3-70b-versatile
+      - key: GROQ_MODEL_CHEAP
+        value: llama-3.1-8b-instant
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: PER_CALL_TIMEOUT
+        value: "20"
