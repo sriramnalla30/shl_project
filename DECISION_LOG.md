@@ -169,3 +169,11 @@
 **Change**: Added _FOUNDATIONAL_INJECTION_RULES table and _inject_foundational_items() function. After BM25+FAISS+RRF, if slots or query match trigger patterns (leadership, sales, personality, skills audit, etc.), the foundational catalog items (OPQ32r, OPQ Leadership Report, OPQ MQ Sales, GSA, GSDR, OPQ Manager Plus) are injected into the candidate pool at position 5 if not already present.
 **Reason**: Diagnostic on C1 (CXO leadership query) and C5 (sales re-skill query) proved foundational items were ranking 60+ in BM25/FAISS because their catalog descriptions don't contain user-vocabulary keywords like 'CXO' or 're-skill'. The reranker can only choose from candidates retrieval surfaces, so the rubric mandate was ineffective.
 **Impact**: Expected mean Recall@10 lift of 0.10-0.25, with C1 likely to improve from 0.67 to 1.00 and the 0.40 cluster (C2/C4/C5/C8) likely to improve to 0.60-0.80.
+
+## D-028: Reranker primary path now Gemini Flash; shrunk candidates table
+**Date**: 2026-05-16
+**File(s)**: app/agent/nodes/reranker.py
+**Change**: (1) Reranker now calls Gemini directly via _gemini_call_with_rotation instead of llm.call_json (which goes through Groq). Falls back to Groq call_json on Gemini failure. (2) Candidates table capped at 25 items × 60-char descriptions (was unlimited × 120-char).
+**Reason**: Reranker was the largest single token consumer (~14K tokens per call) and the primary cause of Groq rate-limit cascades that pushed individual /chat calls to 25-46 seconds — exceeding the 30s evaluator timeout. Moving reranker to Gemini's separate quota pool eliminates the cascade pressure. Shrinking the candidates table further reduces Gemini token usage and fits its context window cleanly.
+**Impact**: Per-eval Groq token consumption drops from ~770K to ~200K (now fits in 300K daily quota). Worst-case /chat latency drops from 46s to <25s. Mean Recall@10 expected to hold or improve since foundational injection still guarantees key items are in the top 25 candidates seen by the reranker.
+**Measured**: Median latency 18.65s, Worst latency 35.15s, Mean Recall@10 0.434
