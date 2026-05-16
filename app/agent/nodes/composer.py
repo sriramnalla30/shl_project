@@ -26,7 +26,7 @@ async def run(state: AgentState) -> dict:
 
     # Clarify/refuse drafts are already built by their nodes
     if intent in ("clarify", "refuse", "compare") and state.get("draft"):
-        return {"draft": state["draft"], "retry_count": state.get("retry_count", 0)}
+        return {"draft": state["draft"], "retry_count": state.get("retry_count", 0) + 1}
 
     # Recommend path
     slots: Slots = state.get("slots", Slots())
