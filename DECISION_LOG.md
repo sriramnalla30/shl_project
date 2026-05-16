@@ -86,3 +86,38 @@
 **Change**: Raise `RuntimeError` if URL allowlist is empty or missing during lifespan startup.
 **Reason**: Empty allowlist silently degrades all recommendations — every URL fails validation, every request falls back to canned reply, Recall@10 drops to 0%.
 **Impact**: Server refuses to start without valid data, giving a clear error message.
+
+## D-015: Comparator Preserves Prior Shortlist (B1)
+**Date**: 2026-05-16
+**File(s)**: `app/agent/nodes/comparator.py`
+**Change**: On compare success, walk message history for prior recommendation URLs and merge with compared items (deduped, capped at 10).
+**Reason**: C5 conversation shows that comparing OPQ32r vs Verify G+ mid-conversation should NOT discard the other 3 recommended assessments. Evaluator likely checks full shortlist after compare turn.
+**Impact**: Compare turns now return the full context — prior shortlist + compared pair.
+
+## D-016: Over-Broad JD Detection (B2)
+**Date**: 2026-05-16
+**File(s)**: `app/agent/nodes/slot_extractor.py`, `app/agent/graph.py`, `app/agent/state.py`
+**Change**: After slot extraction, if `must_haves` has ≥5 items and `role` is known, set `__force_clarify_broad` flag. `_route_after_extract` checks this flag and routes to clarifier on early turns.
+**Reason**: C9 conversation shows that pasting a long JD with 7+ technical areas should trigger decomposition and clarification, not an immediate recommendation.
+**Impact**: Over-broad queries get a "which area is most important?" question before recommending.
+
+## D-017: Catalog Gap Acknowledgment (B3)
+**Date**: 2026-05-16
+**File(s)**: `app/agent/nodes/reranker.py`, `app/agent/nodes/composer.py`, `app/agent/state.py`
+**Change**: Reranker detects distinctive technology tokens (e.g., Rust, Kotlin) missing from all shortlist items. Composer injects a gap_block into its prompt instructing the LLM to acknowledge the gap explicitly.
+**Reason**: C2 conversation shows that when a user asks for a "Rust developer" test, the agent should say "We don't have a Rust-specific test in the catalog" before offering alternatives.
+**Impact**: Users see explicit gap acknowledgment instead of silent substitution.
+
+## D-018: Markdown Trace Parser (E1)
+**Date**: 2026-05-16
+**File(s)**: `eval/parse_md_traces.py`
+**Change**: New module parses C1–C10 markdown conversations into structured eval records: user turns + expected URLs from the final recommend turn.
+**Reason**: The official evaluator uses the sample conversations as ground truth. Having a parser lets us compute Recall@10 against the same data.
+**Impact**: Foundation for the replay harness.
+
+## D-019: Replay Harness Rewrite for Markdown Traces (E2)
+**Date**: 2026-05-16
+**File(s)**: `eval/replay.py`
+**Change**: Replaced LLM-driven simulated-user replay with "ideal-trace replay" — sends literal user turns from markdown files through /chat. Computes Recall@10 against expected URLs.
+**Reason**: Simulated-user approach was non-deterministic and required GROQ_API_KEY. Ideal-trace replay is deterministic and directly tests the agent against the exact conversations the evaluator will use.
+**Impact**: Reliable, reproducible Recall@10 measurement with no LLM dependency in the eval loop.
