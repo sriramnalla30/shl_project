@@ -23,6 +23,40 @@ def set_catalog(catalog: list[dict]) -> None:
     global _catalog
     _catalog = catalog
 
+# Query expansion: map user vocabulary to catalog vocabulary so BM25 hits.
+# Without this, "re-skill" misses "Global Skills Assessment", "sales" misses
+# "OPQ MQ Sales Report", "leadership" misses "OPQ Leadership Report", etc.
+_VOCAB_EXPANSIONS = {
+    "skill": "skills assessment global skills",
+    "re-skill": "skills assessment global skills development",
+    "reskill": "skills assessment global skills development",
+    "upskill": "skills assessment global skills",
+    "sales": "OPQ MQ Sales sales transformation",
+    "seller": "OPQ MQ Sales sales transformation",
+    "leadership": "OPQ Leadership Report universal competency",
+    "leader": "OPQ Leadership Report universal competency",
+    "executive": "OPQ Leadership Report enterprise leadership",
+    "cxo": "OPQ Leadership Report enterprise leadership",
+    "director": "OPQ Leadership Report enterprise leadership",
+    "manager": "OPQ Manager Plus universal competency",
+    "personality": "OPQ32r occupational personality questionnaire",
+    "behavioral": "OPQ32r personality behavior",
+    "behaviour": "OPQ32r personality behavior",
+    "audit": "skills assessment development report",
+    "talent": "OPQ32r universal competency assessment",
+    "competency": "OPQ32r universal competency report",
+    "selection": 
+    "OPQ32r universal competency assessment",
+}
+
+def _expand_vocabulary(text: str) -> str:
+    """Add catalog terms when user uses semantic-equivalent vocabulary."""
+    lowered = text.lower()
+    extra_terms = []
+    for trigger, expansion in _VOCAB_EXPANSIONS.items():
+        if trigger in lowered and expansion not in extra_terms:
+            extra_terms.append(expansion)
+    return " ".join(extra_terms)
 
 def render_query(slots: Slots, messages: list) -> str:
     """Build a synthesized query from structured slots + user messages."""
@@ -56,9 +90,12 @@ def render_query(slots: Slots, messages: list) -> str:
         parts.append(f"test types: {type_terms}")
     for msg in user_msgs:
         parts.append(f"user: {msg}")
-    return " | ".join(parts) if parts else (user_msgs[0] if user_msgs else "")
-
-
+    base_query = " | ".join(parts) if parts else (user_msgs[0] if user_msgs else "")
+    expansion = _expand_vocabulary(base_query)
+    if expansion:
+        return f"{base_query} | catalog terms: {expansion}"
+    return base_query
+    
 async def run(state: AgentState) -> dict:
     slots: Slots = state.get("slots", Slots())
     messages = state.get("messages", [])

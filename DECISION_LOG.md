@@ -128,3 +128,24 @@
 **Change**: Raised BM25 and FAISS top-k from 30 to 50; raised the post-RRF cap from [:30] to [:50]. Raised the reranker LLM-failure fallback from candidates[:5] to candidates[:8].
 **Reason**: First eval run reported mean Recall@10 = 0.277. Two structural caps were responsible for most of the gap: (a) expected URLs at rank 31–50 in either modality were never seen by the reranker, and (b) when the reranker LLM failed (notably during Groq daily-token exhaustion), the 5-item fallback shortlist was mathematically incapable of exceeding Recall@10 ≈ 0.71 even with perfect ordering — and was usually closer to 0.20–0.30 because top-5 doesn't always contain the relevant items. Widening both knobs makes the retrieval pipeline robust to LLM failures and gives the reranker a richer candidate pool.
 **Impact**: Expected lift of 0.15–0.20 on mean Recall@10 standalone, before any of the upcoming Mini-Prompt A/B/C fixes land.
+
+## D-021: Comparator import cleanup + remaining reranker fallback widening
+**Date**: 2026-05-16
+**File(s)**: app/agent/nodes/comparator.py, app/agent/nodes/reranker.py
+**Change**: (1) Removed 3 stray `from _distutils_hack import override` lines from comparator.py top (they had been auto-injected by an editor and would have failed at import time on clean environments). (2) Added `import re` to comparator.py because `_extract_pair` calls `re.search` but only `re as _re` was imported, which would have raised NameError on every compare turn. (3) Widened the two remaining `candidates[:5]` fallbacks in reranker.py to `[:8]`, completing the Quick Win 1 work.
+**Reason**: The compare flow would have crashed silently on every compare turn (NameError → caught by outer try/except → degraded fallback message), meaning the C5/C9-style comparison behaviors were untested in any prior eval run. Two of the reranker fallbacks were also still capped at 5 items, mathematically capping Recall@10 in those code paths.
+**Impact**: Compare turns now actually execute. All reranker fallback paths now return 8 items instead of 5, completing the widening work.
+
+## D-022: Final V3 batch — probes, replay harness, Gemini fallback
+**Date**: 2026-05-16
+**File(s)**: eval/probes/test_probes.py, eval/replay.py, app/agent/llm.py
+**Change**: (1) Renamed `test_under_45s` to `test_under_30s` and set the assertion to `< 35.0s` (30s spec + 5s local jitter buffer; deployed endpoint must independently meet 30s). (2) Strengthened probes 7 and 8 to assert non-empty recommendations and presence of the requested test-type letter codes (P, B), eliminating the vacuous-pass failure mode. (3) Replaced `eval/replay.py` with markdown-trace consumer that uses `eval.parse_md_traces.load_all_traces`, sends literal user turns through `/chat` with full history per call, computes Recall@10 against expected URLs, and writes `eval_report.md`. Added `INTER_TRACE_DELAY_S` (default 3s) for Groq rate-limit pacing. (4) Added Gemini fallback in `app/agent/llm.py` using the new `google-genai` SDK — triggers on both `RateLimitError`/`APIStatusError` and `TimeoutError` after Groq main → cheap chain is exhausted. Makes eval runs robust to Groq's 100K-tokens/day cap that caused the prior 0.277 Recall@10 result.
+**Reason**: Without these four fixes, (a) the local probe suite reported false passes, (b) there was no reproducible way to measure Recall@10 against the actual sample conversations, and (c) every eval run was at risk of cascading failures once Groq's daily token cap was hit.
+**Impact**: First reproducible eval run becomes possible. Expected mean Recall@10 ≥ 0.55 (target 0.70) given all upstream V3 fixes are now also in place.
+
+## D-023: Router commit bias — recall@10 0.104 → 0.434
+**Date**: 2026-05-16
+**File(s)**: app/agent/nodes/router.py, app/agent/prompts/router.md, app/agent/graph.py, app/agent/nodes/slot_extractor.py
+**Change**: (1) Router turn-budget bias lowered from turn >= 5 to turn >= 2 when role is known, plus a turn >= 3 unconditional commit. (2) Router prompt rewritten to bias toward "recommend" once any role info exists. (3) _route_after_extract simplified — clarify only fires on turn 0-1 when slots are genuinely empty. (4) Slot extractor broad-clarify threshold raised from 5 must-haves to 7, stopping it from triggering on every halfway-detailed JD.
+**Reason**: First eval run showed 8 of 10 traces returning zero recommendations. Root cause was the agent staying in clarify-loop forever on 3-4 turn conversations because the force-recommend threshold only kicked in at turn 5+. The 0.03s median latency was the smoking gun — agent was hitting the canned "tell me more" reply without doing any LLM work.
+**Impact**: Mean Recall@10 jumped from 0.104 to 0.434 in one re-run. Per-trace: C10 hit perfect 1.00; C3 held at 0.75; C2/C4/C5/C8 all jumped from 0.00 to 0.40; C6 from 0.00 to 0.50.
