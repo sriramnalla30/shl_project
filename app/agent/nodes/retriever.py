@@ -25,30 +25,38 @@ def set_catalog(catalog: list[dict]) -> None:
 
 
 def render_query(slots: Slots, messages: list) -> str:
-    """Build a synthesized query from structured slots + last user message."""
-    last_user = ""
+    """Build a synthesized query from structured slots + user messages."""
+    user_msgs = []
     for m in reversed(messages):
         if m.role == "user":
-            last_user = m.content
-            break
+            user_msgs.append(m.content)
+            if len(user_msgs) >= 3:
+                break
+    user_msgs.reverse()
 
     parts = []
     if slots.role:
         parts.append(f"role: {slots.role}")
     if slots.seniority:
-        parts.append(f"seniority: {slots.seniority}")
+        seniority_terms = {
+            "senior": "senior leadership executive director",
+            "lead": "lead principal senior",
+            "mid": "mid-level experienced",
+            "junior": "junior entry-level graduate",
+        }
+        parts.append(f"seniority: {seniority_terms.get(slots.seniority, slots.seniority)}")
     if slots.must_haves:
         parts.append("skills: " + ", ".join(slots.must_haves))
     if slots.test_types_wanted:
         type_map = {"A": "aptitude ability reasoning", "B": "situational judgment",
                      "C": "competency", "D": "development 360",
                      "E": "assessment exercise", "K": "knowledge skills technical",
-                     "P": "personality behavior", "S": "simulation"}
+                     "P": "personality behavior OPQ", "S": "simulation"}
         type_terms = " ".join(type_map.get(t, t) for t in slots.test_types_wanted)
         parts.append(f"test types: {type_terms}")
-    if last_user:
-        parts.append(f"recent: {last_user}")
-    return " | ".join(parts) if parts else last_user
+    for msg in user_msgs:
+        parts.append(f"user: {msg}")
+    return " | ".join(parts) if parts else (user_msgs[0] if user_msgs else "")
 
 
 async def run(state: AgentState) -> dict:
@@ -58,9 +66,9 @@ async def run(state: AgentState) -> dict:
     logger.info("Retriever query: %s", query[:120])
 
     # Hybrid retrieval
-    bm = bm25_topk(query, k=30)
-    de = dense_topk(query, k=30)
-    fused = rrf([bm, de], k=60)[:30]
+    bm = bm25_topk(query, k=50)
+    de = dense_topk(query, k=50)
+    fused = rrf([bm, de], k=100)[:50]
 
     # Hydrate with catalog records
     candidates = []
