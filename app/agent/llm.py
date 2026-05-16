@@ -126,6 +126,7 @@ async def _gemini_call(
                 config={
                     "max_output_tokens": max_tokens,
                     "temperature": temperature,
+                    "response_mime_type": "application/json" if "JSON" in prompt[:500].upper() else "text/plain",
                 },
             ),
             timeout=timeout,

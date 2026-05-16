@@ -153,4 +153,4 @@ class TestP12Latency:
         start = time.time()
         chat([{"role": "user", "content": "Personality test for HR manager"}])
         elapsed = time.time() - start
-        assert elapsed < 35.0, f"Took {elapsed:.1f}s, spec limit is 30s per call (35s with jitter buffer)"
+        assert elapsed < 30.0, f"Took {elapsed:.1f}s, spec limit is 30s per call (35s with jitter buffer)"
