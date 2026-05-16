@@ -1,0 +1,15 @@
+{
+  "id": "trace_02_personality_manager",
+  "facts": {
+    "role": "Marketing Manager",
+    "level": "Senior",
+    "test_types": "Personality assessments",
+    "duration_max": "no preference"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/opq32r/",
+    "https://www.shl.com/products/product-catalog/view/opq-universal-competency-report/",
+    "https://www.shl.com/products/product-catalog/view/motivation-questionnaire-mqm5/",
+    "https://www.shl.com/products/product-catalog/view/global-skills-development-report/"
+  ]
+}

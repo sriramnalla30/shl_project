@@ -1,0 +1,15 @@
+{
+  "id": "trace_05_python_dev",
+  "facts": {
+    "role": "Python Developer",
+    "level": "Senior",
+    "test_types": "Knowledge and coding tests",
+    "duration_max": "45 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/python-new/",
+    "https://www.shl.com/products/product-catalog/view/automata-new/",
+    "https://www.shl.com/products/product-catalog/view/automata-fix-new/",
+    "https://www.shl.com/products/product-catalog/view/agile-software-development/"
+  ]
+}

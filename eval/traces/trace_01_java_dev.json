@@ -1,0 +1,15 @@
+{
+  "id": "trace_01_java_dev",
+  "facts": {
+    "role": "Java Developer",
+    "level": "Mid-level",
+    "test_types": "Knowledge tests",
+    "duration_max": "30 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/java-8-new/",
+    "https://www.shl.com/products/product-catalog/view/core-java-new/",
+    "https://www.shl.com/products/product-catalog/view/java-enterprise-edition-new/",
+    "https://www.shl.com/products/product-catalog/view/agile-software-development/"
+  ]
+}

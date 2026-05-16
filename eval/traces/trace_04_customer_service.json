@@ -1,0 +1,15 @@
+{
+  "id": "trace_04_customer_service",
+  "facts": {
+    "role": "Customer Service Representative",
+    "level": "Entry-level",
+    "test_types": "Simulation and behavioral",
+    "duration_max": "20 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/customer-service-phone-simulation/",
+    "https://www.shl.com/products/product-catalog/view/entry-level-customer-service-general-solution/",
+    "https://www.shl.com/products/product-catalog/view/customer-service-phone-solution/",
+    "https://www.shl.com/products/product-catalog/view/entry-level-customer-serv-retail-and-contact-center/"
+  ]
+}

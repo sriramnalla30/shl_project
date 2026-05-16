@@ -1,0 +1,16 @@
+{
+  "id": "trace_09_dotnet_dev",
+  "facts": {
+    "role": ".NET Developer",
+    "level": "Mid-level",
+    "test_types": "Technical knowledge tests",
+    "duration_max": "20 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/net-framework-4-5/",
+    "https://www.shl.com/products/product-catalog/view/net-mvc-new/",
+    "https://www.shl.com/products/product-catalog/view/net-mvvm-new/",
+    "https://www.shl.com/products/product-catalog/view/net-wcf-new/",
+    "https://www.shl.com/products/product-catalog/view/ado-net-new/"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "trace_07_accountant",
+  "facts": {
+    "role": "Accountant",
+    "level": "Entry-level",
+    "test_types": "Knowledge tests",
+    "duration_max": "15 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/accounts-payable-new/",
+    "https://www.shl.com/products/product-catalog/view/accounts-receivable-new/",
+    "https://www.shl.com/products/product-catalog/view/accounts-payable-simulation-new/",
+    "https://www.shl.com/products/product-catalog/view/accounts-receivable-simulation-new/"
+  ]
+}

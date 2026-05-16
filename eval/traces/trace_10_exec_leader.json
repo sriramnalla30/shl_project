@@ -1,0 +1,15 @@
+{
+  "id": "trace_10_exec_leader",
+  "facts": {
+    "role": "Executive Leader",
+    "level": "Senior",
+    "test_types": "Leadership and behavioral assessment",
+    "duration_max": "no preference"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/executive-scenarios/",
+    "https://www.shl.com/products/product-catalog/view/opq32r/",
+    "https://www.shl.com/products/product-catalog/view/motivation-questionnaire-mqm5/",
+    "https://www.shl.com/products/product-catalog/view/executive-scenarios-narrative-report/"
+  ]
+}

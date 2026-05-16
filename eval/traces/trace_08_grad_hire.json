@@ -1,0 +1,15 @@
+{
+  "id": "trace_08_grad_hire",
+  "facts": {
+    "role": "Graduate Hire",
+    "level": "Entry-level",
+    "test_types": "Cognitive and personality combined",
+    "duration_max": "no preference"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/verify-interactive-g-plus/",
+    "https://www.shl.com/products/product-catalog/view/opq32r/",
+    "https://www.shl.com/products/product-catalog/view/graduate-8-0/",
+    "https://www.shl.com/products/product-catalog/view/general-ability-verify-g-plus/"
+  ]
+}

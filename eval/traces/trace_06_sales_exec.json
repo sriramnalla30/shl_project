@@ -1,0 +1,15 @@
+{
+  "id": "trace_06_sales_exec",
+  "facts": {
+    "role": "Sales Executive",
+    "level": "Mid-level",
+    "test_types": "Personality and situational judgment",
+    "duration_max": "40 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/opq32r/",
+    "https://www.shl.com/products/product-catalog/view/sales-sift/",
+    "https://www.shl.com/products/product-catalog/view/motivation-questionnaire-mqm5/",
+    "https://www.shl.com/products/product-catalog/view/executive-scenarios/"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "trace_03_data_analyst",
+  "facts": {
+    "role": "Data Analyst",
+    "level": "Entry-level",
+    "test_types": "Cognitive ability tests",
+    "duration_max": "25 minutes"
+  },
+  "expected_shortlist": [
+    "https://www.shl.com/products/product-catalog/view/verify-interactive-g-plus/",
+    "https://www.shl.com/products/product-catalog/view/verify-numerical-ability/",
+    "https://www.shl.com/products/product-catalog/view/verify-deductive-reasoning/",
+    "https://www.shl.com/products/product-catalog/view/general-ability-verify-g-plus/"
+  ]
+}
