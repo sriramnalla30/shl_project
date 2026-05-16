@@ -41,3 +41,5 @@ class AgentState(TypedDict, total=False):
     validation_errors: list[str]
     retry_count: int
     final: Optional[dict]        # the response payload
+    __force_clarify_broad: bool  # set by slot_extractor for over-broad JDs
+    catalog_gap: Optional[str]   # set by reranker when a distinctive tech is missing

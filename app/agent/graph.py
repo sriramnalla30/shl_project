@@ -35,6 +35,10 @@ def _route_after_extract(s: AgentState) -> str:
     intent = s.get("intent", "")
     slots = s.get("slots")
 
+    # New: if extractor flagged the query as over-broad, clarify first
+    if s.get("__force_clarify_broad") and s.get("turn", 0) < 3:
+        return "clarifier"
+
     if intent == "compare":
         return "comparator"
     if intent == "clarify" or (
