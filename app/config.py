@@ -2,7 +2,7 @@
 Application configuration — Pydantic Settings with env var wiring.
 """
 from __future__ import annotations
-
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
 import logging
 import os
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     llm_timeout: float = 25.0
     per_call_timeout: float = 15.0
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 @lru_cache

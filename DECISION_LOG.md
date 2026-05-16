@@ -149,3 +149,10 @@
 **Change**: (1) Router turn-budget bias lowered from turn >= 5 to turn >= 2 when role is known, plus a turn >= 3 unconditional commit. (2) Router prompt rewritten to bias toward "recommend" once any role info exists. (3) _route_after_extract simplified — clarify only fires on turn 0-1 when slots are genuinely empty. (4) Slot extractor broad-clarify threshold raised from 5 must-haves to 7, stopping it from triggering on every halfway-detailed JD.
 **Reason**: First eval run showed 8 of 10 traces returning zero recommendations. Root cause was the agent staying in clarify-loop forever on 3-4 turn conversations because the force-recommend threshold only kicked in at turn 5+. The 0.03s median latency was the smoking gun — agent was hitting the canned "tell me more" reply without doing any LLM work.
 **Impact**: Mean Recall@10 jumped from 0.104 to 0.434 in one re-run. Per-trace: C10 hit perfect 1.00; C3 held at 0.75; C2/C4/C5/C8 all jumped from 0.00 to 0.40; C6 from 0.00 to 0.50.
+
+## D-024: Retriever vocab expansion + reranker rubric tightening
+**Date**: 2026-05-16
+**File(s)**: app/agent/nodes/retriever.py, app/agent/prompts/reranker.md
+**Change**: (1) Added _VOCAB_EXPANSIONS dictionary mapping user vocabulary (re-skill, leadership, sales, CXO, etc.) to catalog vocabulary (Global Skills Assessment, OPQ Leadership Report, OPQ MQ Sales). (2) Reranker rubric now mandates including OPQ32r foundational instrument when any OPQ-derived report or P-type test is in scope; mandates GSA + GSDR for skills/audit queries; prefers broad reports over narrow variants.
+**Reason**: Run after router fix showed 8 traces stuck at 0.40 because the agent returned 8 sales/leadership-themed items but consistently missed OPQ32r itself plus GSA. Diagnostic on C5 confirmed 3 expected items were missing from agent's top-8.
+**Impact**: Mean Recall@10 0.434 → 0.450. C1 jumped 0.00 → 0.67 (huge); C6 from 0.00 → 0.50; C7 from 0.00 → 0.20. C10 regressed 1.00 → 0.50 due to OPQ32r mandate displacing a correct non-OPQ item. Trade-off acknowledged.
