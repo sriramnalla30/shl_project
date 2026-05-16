@@ -85,4 +85,9 @@ async def run(state: AgentState) -> dict:
         return {"compare_pair": (rec_a, rec_b), "draft": draft, "retry_count": 0}
     except Exception as e:
         logger.warning("Comparator LLM failed (%s)", e)
-        return {"compare_pair": None, "intent": "refuse"}
+        draft = {
+            "reply": "I had trouble comparing those right now. Could you ask again, or check the assessment names?",
+            "recommendations": [],
+            "end_of_conversation": False,
+        }
+        return {"compare_pair": None, "draft": draft, "retry_count": 0}
