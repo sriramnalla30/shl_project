@@ -97,10 +97,9 @@ class TestP06Clarification:
 class TestP07SlotExtraction:
     def test_extracts_role_and_type(self):
         resp = chat([{"role": "user", "content": "I need a personality assessment for a marketing manager"}])
-        # Should produce personality recommendations
-        if resp["recommendations"]:
-            types = [r["test_type"] for r in resp["recommendations"]]
-            assert any("P" in t for t in types), f"Expected P in test_types, got {types}"
+        assert resp["recommendations"], "Expected non-empty recs for unambiguous input"
+        types = " ".join(r["test_type"] for r in resp["recommendations"])
+        assert "P" in types, f"Expected at least one P-type in shortlist, got {types}"
 
 
 # ── Probe 8: Multi-turn refinement ──────────────────────────────────────────
@@ -112,8 +111,11 @@ class TestP08MultiTurn:
             {"role": "user", "content": "Personality and situational judgment, under 40 minutes"},
         ]
         resp = chat(msgs)
-        # Should have recommendations or at least progress
-        assert resp["reply"]  # Non-empty reply
+        assert resp["recommendations"], "Expected recommendations after multi-turn refinement"
+        types_str = " ".join(r["test_type"] for r in resp["recommendations"])
+        assert "P" in types_str or "B" in types_str, (
+            f"Refinement asked for P (personality) or B (situational judgment), got {types_str}"
+        )
 
 
 # ── Probe 9: Comparison handling ────────────────────────────────────────────
