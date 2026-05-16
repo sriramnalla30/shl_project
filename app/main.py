@@ -4,8 +4,10 @@ FastAPI app — routes, lifecycle, lifespan handler.
 from __future__ import annotations
 
 import logging
+import logging.handlers
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -18,10 +20,32 @@ from app.observability.tracing import init_tracing
 
 load_dotenv()
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
+# ── Persistent file logging (captures everything for offline debugging) ──────
+_LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+_LOG_DIR.mkdir(exist_ok=True)
+_LOG_FILE = _LOG_DIR / "server.log"
+
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+
+# Avoid duplicate handlers on uvicorn reload
+if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in _root.handlers):
+    _file_handler = logging.handlers.RotatingFileHandler(
+        _LOG_FILE, maxBytes=5_000_000, backupCount=3, encoding="utf-8"
+    )
+    _file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+    ))
+    _root.addHandler(_file_handler)
+
+# Also keep console output
+if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+           for h in _root.handlers):
+    _console_handler = logging.StreamHandler()
+    _console_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+    ))
+    _root.addHandler(_console_handler)
 logger = logging.getLogger(__name__)
 
 # ── Globals set during lifespan ──────────────────────────────────────────────

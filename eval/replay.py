@@ -20,8 +20,21 @@ from eval.parse_md_traces import load_all_traces
 from eval.recall import recall_at_k, mean_recall_at_k
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+
+from pathlib import Path
+_LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+_LOG_DIR.mkdir(exist_ok=True)
+_LOG_FILE = _LOG_DIR / "eval.log"
+
+# Configure both file and console logging
+_handler_file = logging.FileHandler(_LOG_FILE, mode="w", encoding="utf-8")  # fresh each run
+_handler_file.setFormatter(logging.Formatter("%(asctime)s %(levelname)s | %(message)s"))
+_handler_console = logging.StreamHandler()
+_handler_console.setFormatter(logging.Formatter("%(levelname)s | %(message)s"))
+logging.basicConfig(level=logging.INFO, handlers=[_handler_file, _handler_console])
+
 logger = logging.getLogger(__name__)
+logger.info("Eval log file: %s", _LOG_FILE)
 
 BASE_URL = os.getenv("AGENT_BASE_URL", "http://localhost:8000")
 TIMEOUT = 60.0
