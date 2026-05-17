@@ -2,6 +2,11 @@
 FROM python:3.11-slim AS builder
 
 WORKDIR /build
+
+# Install CPU-only PyTorch FIRST — prevents pip from pulling 400MB+ of CUDA libs
+# This alone saves ~300MB RAM at runtime (critical for Render free-tier 512MB limit)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY pyproject.toml README.md ./
 COPY app/ app/
 RUN pip install --no-cache-dir .
@@ -24,6 +29,9 @@ RUN test -f data/url_allowlist.txt || (echo "ERROR: run 'python scripts/build_in
 COPY README.md .
 
 ENV PYTHONUNBUFFERED=1
+# Disable HF model freshness checks at runtime to speed up cold start
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
 
 EXPOSE 8000
 
