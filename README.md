@@ -3,11 +3,8 @@
 A production-grade conversational AI agent that recommends SHL Individual Test Solutions through multi-turn dialogue with hiring managers.
 
 ## Architecture
+![architecture_image](https://github.com/user-attachments/assets/6259860f-1010-4dfa-9df1-5da20c0480c9)
 
-```
-<img width="1536" height="1024" alt="architecture_image" src="https://github.com/user-attachments/assets/6259860f-1010-4dfa-9df1-5da20c0480c9" />
-
-```
 
 ### Key Design Decisions
 
