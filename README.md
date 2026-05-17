@@ -5,17 +5,8 @@ A production-grade conversational AI agent that recommends SHL Individual Test S
 ## Architecture
 
 ```
-User ─→ FastAPI /chat ─→ LangGraph State Machine
-                            │
-                            ├─ Guardrail (scope check)
-                            ├─ Router (intent classification)
-                            ├─ Slot Extractor (structured extraction)
-                            ├─ Clarifier (ask follow-up)
-                            ├─ Retriever (BM25 + FAISS + RRF)
-                            ├─ Reranker (LLM-based)
-                            ├─ Comparator (side-by-side)
-                            ├─ Composer (response formatting)
-                            └─ Validator (schema + URL check)
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/e2f69997-b2ae-4d80-ba31-969a8c66c03d" />
+
 ```
 
 ### Key Design Decisions
