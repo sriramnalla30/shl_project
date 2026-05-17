@@ -5,7 +5,7 @@ A production-grade conversational AI agent that recommends SHL Individual Test S
 ## Architecture
 
 ```
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/d78c1939-e07c-450e-8e6c-4a864508eb8d" />
+<img width="1536" height="1024" alt="architecture_image" src="https://github.com/user-attachments/assets/c516c6e0-5d95-4c6a-9587-77d6d2a8720d" />
 
 ```
 
